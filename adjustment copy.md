@@ -1,0 +1,2 @@
+for both admin and staff:
+at the selling sections, include buyer address field, also the selling price field should be included and pre filled with the set selling price of the item, but it can be changed at the selling point cus, we allow bargaining so after the buyer reached a god price with us, then we put the new price on the selling and click on complete sales.

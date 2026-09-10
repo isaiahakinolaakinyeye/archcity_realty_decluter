@@ -1,0 +1,2049 @@
+Build a complete, production-ready **Declutter Business Sales & Inventory Management System**.
+
+The system is an internal web application for a declutter/resale business. It should allow **staff to record sales and payments**, while **admins manage inventory, customers, categories, sales, purchases, and business performance**.
+
+The application must feel like a modern SaaS business application: clean, premium, simple, fast, professional, and highly usable.
+
+---
+
+# 1. TECHNOLOGY STACK
+
+Frontend:
+
+* React.js
+* Tailwind CSS
+* React Router
+* JavaScript or TypeScript
+* Component-based architecture
+* Mobile-first responsive design
+* Modern dashboard UI
+* Reusable components
+* Proper form validation
+* Loading states
+* Empty states
+* Error states
+* Confirmation dialogs
+* Toast notifications
+
+If a backend is required, structure the frontend cleanly so it can connect to a REST API.
+
+Use a proper API/service layer rather than putting API calls directly inside UI components.
+
+Suggested structure:
+
+```text
+src/
+  components/
+  pages/
+  layouts/
+  hooks/
+  services/
+  utils/
+  context/
+  types/
+  assets/
+```
+
+Use reusable components for:
+
+* Tables
+* Modals
+* Forms
+* Search inputs
+* Filters
+* Cards
+* Charts
+* Pagination
+* Status badges
+* Empty states
+* Loading skeletons
+* Confirmation dialogs
+
+---
+
+# 2. DESIGN DIRECTION
+
+The UI should look like a modern SaaS business application.
+
+Think:
+
+* Linear
+* Stripe Dashboard
+* Shopify Admin
+* modern CRM
+* modern inventory management software
+
+Design principles:
+
+* Clean whitespace
+* Rounded cards
+* Subtle borders
+* Professional typography
+* Clear visual hierarchy
+* Minimal clutter
+* Excellent spacing
+* Consistent iconography
+* Responsive tables
+* Mobile-first layouts
+* Professional charts
+* Clear success/error states
+
+Do NOT make it look like a generic template.
+
+The application should feel like a real commercial product.
+
+Use Tailwind CSS throughout.
+
+---
+
+# 3. USER ROLES
+
+There are two main roles:
+
+## ADMIN
+
+Admins can:
+
+* View the admin dashboard
+* Add inventory/items
+* Edit inventory
+* Delete inventory where appropriate
+* Create categories
+* View all products
+* View all sales
+* Record sales
+* Update sales
+* Record customer payments
+* View customers
+* View customer transaction history
+* View business statistics
+* Filter reports
+* View profit
+* View purchases
+* View sales growth
+* Manage inventory
+* Manage staff/users if user management is implemented
+
+## STAFF
+
+Staff can:
+
+* Access staff dashboard
+* Search available products
+* Record sales
+* Enter quantity sold
+* Enter customer information
+* Record whether payment is full or installment
+* Record payments
+* View sales they have recorded
+* View relevant sales statistics
+
+Staff should NOT be able to:
+
+* Add newly purchased inventory
+* Delete inventory
+* Create categories
+* Access sensitive admin analytics
+* Modify purchase costs
+* Access admin-only pages
+
+Protect routes based on role.
+
+---
+
+# 4. AUTHENTICATION
+
+Create a proper authentication structure.
+
+Login screen:
+
+* Email/username
+* Password
+* Remember session
+* Login button
+* Validation
+* Loading state
+* Error state
+
+After login:
+
+ADMIN → Admin Dashboard
+
+STAFF → Staff Dashboard
+
+Protect all private routes.
+
+Do not rely only on hiding navigation links. Role permissions must also be enforced at the routing/API level.
+
+---
+
+# 5. INVENTORY / PRODUCTS
+
+The business buys items from people and resells them.
+
+Each inventory item should contain:
+
+### Product information
+
+* Product ID
+* Product name
+* Product image
+* Category
+* Quantity purchased
+* Quantity remaining
+* Quantity sold
+* Purchase price
+* Purchase date
+* Selling price
+* Item status
+
+### Seller information
+
+The person who sold the item to the business:
+
+* Seller/customer name
+* Phone number
+* Address
+
+Important:
+
+The selling price should be stored separately from the purchase cost.
+
+For example:
+
+Purchase cost:
+
+₦20,000
+
+Selling price:
+
+₦30,000
+
+Potential profit:
+
+₦10,000
+
+---
+
+# 6. MULTI-UNIT PRODUCTS
+
+Some products may have multiple units.
+
+Example:
+
+Product:
+
+"Plastic Chair"
+
+Quantity purchased:
+
+10
+
+Purchase cost per unit:
+
+₦5,000
+
+Selling price per unit:
+
+₦8,000
+
+If staff sells 2 units:
+
+Remaining quantity becomes:
+
+8
+
+Sold quantity becomes:
+
+2
+
+The system must NEVER mark the entire product as sold when only part of the quantity has been sold.
+
+Status logic:
+
+If quantity remaining > 0:
+
+AVAILABLE
+
+If quantity remaining = 0:
+
+SOLD OUT
+
+The inventory table should clearly display:
+
+* Total units
+* Units sold
+* Units remaining
+
+---
+
+# 7. ADMIN — ADD INVENTORY PAGE
+
+Create:
+
+`/admin/inventory`
+
+and:
+
+`/admin/inventory/new`
+
+Only admins can access these pages.
+
+The Add Inventory form should contain:
+
+### Product
+
+* Product name
+* Product image upload
+* Category dropdown
+* Quantity
+* Purchase price
+* Selling price
+
+### Seller
+
+* Seller name
+* Seller phone
+* Seller address
+
+### Purchase
+
+* Purchase date
+
+Add proper validation.
+
+If quantity is greater than 1, clearly communicate that the entered purchase/selling price is **per unit** unless the design explicitly supports total purchase price.
+
+Allow the admin to preview the item before saving.
+
+---
+
+# 8. INVENTORY LIST
+
+Create a professional inventory table.
+
+Columns:
+
+* Image
+* Product
+* Category
+* Total units
+* Units sold
+* Units remaining
+* Purchase price
+* Selling price
+* Potential profit
+* Seller
+* Status
+* Date added
+* Actions
+
+Status:
+
+AVAILABLE
+
+PARTIALLY SOLD
+
+SOLD OUT
+
+### Color requirements
+
+Items that are completely sold should have a subtle **green background/tint**.
+
+Do not use an extremely bright green.
+
+Make it professional and readable.
+
+Partially sold items can have a neutral/yellow status indicator.
+
+Available items should remain normal.
+
+---
+
+# 9. INVENTORY FILTERS
+
+Allow admin to filter inventory by:
+
+* All
+* Available
+* Partially sold
+* Sold out
+* Category
+* Date/month/year
+* Seller
+
+Include:
+
+* Search
+* Sort
+* Pagination
+
+Search should work by:
+
+* Product name
+* Seller name
+* Seller phone
+* Category
+
+---
+
+# 10. STAFF SALES PAGE
+
+Create:
+
+`/staff/sales`
+
+The main purpose is for staff to quickly sell an item.
+
+The page should be extremely simple and fast to use.
+
+At the top:
+
+## Search product
+
+Staff searches for the product they want to sell.
+
+IMPORTANT:
+
+The search results must ONLY show products that still have available quantity.
+
+Do not show completely sold-out products.
+
+For example:
+
+Search:
+
+"Chair"
+
+Results:
+
+Plastic Chair — 4 units available
+
+Office Chair — 2 units available
+
+Broken Chair — SOLD OUT
+
+The sold-out item should not appear.
+
+---
+
+# 11. SELL PRODUCT
+
+When staff selects a product, show:
+
+Product image
+
+Product name
+
+Category
+
+Selling price per unit
+
+Available quantity
+
+Quantity to sell
+
+Customer information
+
+Payment information
+
+---
+
+# 12. QUANTITY SOLD
+
+If available quantity = 1:
+
+Quantity should automatically be 1.
+
+If available quantity > 1:
+
+Allow staff to enter quantity sold.
+
+Example:
+
+Available:
+
+10
+
+Customer buys:
+
+2
+
+System should automatically calculate:
+
+Units sold = 2
+
+Remaining = 8
+
+Do not allow staff to sell more than available quantity.
+
+---
+
+# 13. CUSTOMER BUYER INFORMATION
+
+Every sale must capture the person buying the product.
+
+Fields:
+
+* Customer name
+* Phone number
+
+Phone number is extremely important because it is used to identify/group customers.
+
+Use phone number as the unique customer identifier.
+
+If the phone number already exists:
+
+DO NOT create a duplicate customer.
+
+Instead, associate the transaction with the existing customer.
+
+---
+
+# 14. PAYMENT TYPES
+
+When recording a sale, provide:
+
+### FULL PAYMENT
+
+Customer pays the entire amount.
+
+Example:
+
+2 × ₦30,000
+
+Total:
+
+₦60,000
+
+Amount paid:
+
+₦60,000
+
+Balance:
+
+₦0
+
+Status:
+
+PAID
+
+### INSTALLMENT
+
+Customer can pay part of the total.
+
+Example:
+
+Total:
+
+₦60,000
+
+Amount paid:
+
+₦20,000
+
+Balance:
+
+₦40,000
+
+Status:
+
+INSTALLMENT / PARTIALLY PAID
+
+---
+
+# 15. PAYMENT TRACKING
+
+Every payment must be stored as an individual transaction.
+
+For example:
+
+Sale total:
+
+₦100,000
+
+Payment history:
+
+September 1 — ₦30,000
+
+September 10 — ₦20,000
+
+September 20 — ₦50,000
+
+Total paid:
+
+₦100,000
+
+Balance:
+
+₦0
+
+Status:
+
+PAID
+
+The payment date should automatically be registered when the payment is recorded.
+
+Do not overwrite previous payments.
+
+Each payment should create a separate payment record.
+
+---
+
+# 16. INSTALLMENT SALES
+
+For installment sales, display:
+
+* Total amount
+* Amount paid
+* Remaining balance
+* Payment status
+* Payment history
+* Last payment date
+* Next payment information if applicable
+
+Status:
+
+* PAID
+* PARTIALLY PAID
+* UNPAID
+
+Allow staff/admin to add another payment later.
+
+When another payment is added:
+
+Automatically update:
+
+Total paid
+
+Remaining balance
+
+Payment status
+
+Payment history
+
+---
+
+# 17. STAFF SALES HISTORY
+
+Create a page showing sales recorded by staff.
+
+Display:
+
+* Product
+* Quantity
+* Customer
+* Customer phone
+* Total sale
+* Amount paid
+* Balance
+* Payment status
+* Date
+* Staff member
+
+Allow filtering by:
+
+* Date
+* Month
+* Year
+* Category
+* Payment status
+
+---
+
+# 18. STAFF DASHBOARD
+
+Create a simple dashboard for staff.
+
+Cards:
+
+* Today's sales
+* This month's sales
+* Total amount collected
+* Outstanding installment balance
+* Number of sales
+
+Staff should NOT see sensitive purchase cost/profit information.
+
+---
+
+# 19. ADMIN DASHBOARD
+
+Create:
+
+`/admin/dashboard`
+
+This is the main business overview.
+
+Display modern statistic cards.
+
+## Cards
+
+### Total Purchase Cost
+
+How much the business spent buying inventory.
+
+### Total Sales
+
+Total value of products sold.
+
+### Total Money Collected
+
+Actual money received from customers.
+
+### Outstanding Payments
+
+Money customers still owe.
+
+### Total Profit
+
+Calculate based on actual sales and purchase cost.
+
+### Items Purchased
+
+Number of units/items purchased.
+
+### Items Sold
+
+Number of units sold.
+
+### Items Remaining
+
+Number of units still available.
+
+---
+
+# 20. PROFIT CALCULATION
+
+Profit should be calculated correctly.
+
+For each sold unit:
+
+Profit:
+
+Selling price - Purchase cost
+
+For multiple units:
+
+Profit:
+
+(Selling price per unit - Purchase cost per unit) × quantity sold
+
+For installment sales, distinguish between:
+
+### Sales revenue
+
+Total selling value of the sale.
+
+### Money collected
+
+Actual amount customers have paid so far.
+
+### Outstanding balance
+
+Total selling value - money collected.
+
+Do not incorrectly classify unpaid installment balances as money already collected.
+
+Clearly label these metrics.
+
+---
+
+# 21. ADMIN DASHBOARD FILTERS
+
+Allow dashboard analytics to be filtered by:
+
+* Month
+* Year
+* Custom date range if practical
+
+When a filter changes, update:
+
+* Sales
+* Purchases
+* Money collected
+* Profit
+* Items sold
+* Items purchased
+* Outstanding balances
+
+---
+
+# 22. SALES GROWTH CHART
+
+Create a clean chart showing sales growth.
+
+Use a modern chart library such as Recharts.
+
+Chart options:
+
+* Monthly sales
+* Daily sales when viewing a month
+* Revenue trend
+
+Example:
+
+January → ₦200k
+
+February → ₦350k
+
+March → ₦500k
+
+April → ₦700k
+
+The chart should update based on the selected period.
+
+Make the chart responsive on mobile.
+
+---
+
+# 23. ADMIN SALES PAGE
+
+Create:
+
+`/admin/sales`
+
+This page should allow the admin to see ALL sales.
+
+The admin should have the same selling functionality as staff.
+
+Admin can:
+
+* Search available products
+* Sell products
+* Select quantity
+* Enter buyer
+* Enter payment
+* Record installment
+* Add later payments
+* Update sale
+* View payment history
+
+The admin sales interface should be similar to the staff sales interface.
+
+---
+
+# 24. ADMIN SALES TABLE
+
+Show:
+
+* Product
+* Category
+* Quantity sold
+* Customer
+* Phone
+* Selling price
+* Total
+* Amount paid
+* Balance
+* Payment status
+* Staff/admin who recorded sale
+* Date
+* Actions
+
+Actions:
+
+* View
+* Edit
+* Add payment
+* View payment history
+
+---
+
+# 25. CUSTOMER MANAGEMENT
+
+Create:
+
+`/admin/customers`
+
+There are two types of customers:
+
+### BUYING CUSTOMERS
+
+People who bought products from the business.
+
+### SELLING CUSTOMERS
+
+People who sold products to the business.
+
+A person can potentially be both.
+
+Use their phone number to group transactions.
+
+Do not create duplicate customer records when the phone number is the same.
+
+---
+
+# 26. CUSTOMER LIST
+
+Display:
+
+* Customer name
+* Phone
+* Customer type
+* Number of purchases
+* Total amount purchased
+* Total amount paid
+* Outstanding balance
+* Number of items sold to business
+* Total amount received by customer
+* Last transaction date
+
+Provide search by:
+
+* Name
+* Phone number
+
+---
+
+# 27. CUSTOMER FILTERS
+
+Allow filtering by:
+
+### Buying customers
+
+Customers who purchased items.
+
+### Selling customers
+
+Customers who sold items to the business.
+
+### Most frequent buyers
+
+Customers with the highest number of purchase transactions.
+
+### Highest-value buyers
+
+Customers who purchased the highest total value.
+
+### Most paying customers
+
+Customers who have paid the highest total amount.
+
+For selling customers:
+
+### Most frequent sellers
+
+Customers who sold to the business most frequently.
+
+### Highest-value sellers
+
+Customers whose items generated the highest purchase cost.
+
+### Highest amount paid to sellers
+
+Customers who received the highest total amount from the business.
+
+---
+
+# 28. CUSTOMER PROFILE PAGE
+
+When an admin clicks a customer:
+
+`/admin/customers/:id`
+
+Show a detailed customer profile.
+
+Header:
+
+* Name
+* Phone
+* Customer type
+* Total transactions
+
+Statistics:
+
+* Total purchases
+* Total spent
+* Total paid
+* Outstanding balance
+* Total items sold to business
+* Total amount received
+
+Then show:
+
+## Transaction History
+
+Every transaction involving that customer.
+
+For buying transactions:
+
+* Product
+* Quantity
+* Total
+* Paid
+* Balance
+* Date
+* Payment status
+
+For selling transactions:
+
+* Product
+* Quantity
+* Purchase price
+* Total received
+* Date
+
+If the customer is both a buyer and seller, show both transaction types.
+
+---
+
+# 29. CATEGORIES
+
+Create:
+
+`/admin/categories`
+
+Admin-only.
+
+Admin can:
+
+* View categories
+* Add category
+* Edit category
+* Delete category where safe
+
+Examples:
+
+* Electronics
+* Furniture
+* Fashion
+* Kitchen
+* Appliances
+* Books
+* Office Equipment
+* Miscellaneous
+
+Do not hard-code categories.
+
+Categories should come from the database.
+
+---
+
+# 30. CATEGORY USAGE
+
+When viewing a category, ideally show:
+
+* Number of products
+* Units purchased
+* Units sold
+* Sales revenue
+* Purchase cost
+* Profit
+
+This can be a useful extension if straightforward to implement.
+
+---
+
+# 31. DATA MODEL
+
+Structure the backend/database around proper relationships.
+
+Recommended entities:
+
+### User
+
+```text
+id
+name
+email
+password
+role
+createdAt
+updatedAt
+```
+
+### Customer
+
+```text
+id
+name
+phone
+address
+createdAt
+updatedAt
+```
+
+The phone number should have a unique constraint.
+
+### Category
+
+```text
+id
+name
+createdAt
+updatedAt
+```
+
+### Product / Inventory
+
+```text
+id
+name
+image
+categoryId
+quantityPurchased
+quantitySold
+quantityRemaining
+purchasePricePerUnit
+sellingPricePerUnit
+sellerCustomerId
+purchaseDate
+status
+createdAt
+updatedAt
+```
+
+### Sale
+
+```text
+id
+productId
+buyerCustomerId
+quantity
+sellingPricePerUnit
+totalAmount
+amountPaid
+balance
+paymentStatus
+soldBy
+saleDate
+createdAt
+updatedAt
+```
+
+### Payment
+
+```text
+id
+saleId
+amount
+paymentDate
+recordedBy
+createdAt
+```
+
+IMPORTANT:
+
+Do not rely only on `amountPaid` in the Sale table.
+
+The payment table should be the source of truth for payment history.
+
+`amountPaid` can be calculated/aggregated from payments or maintained safely as a derived value.
+
+---
+
+# 32. TRANSACTION SAFETY
+
+Selling inventory must be handled safely.
+
+When a sale occurs:
+
+1. Check available quantity.
+2. Confirm requested quantity does not exceed available quantity.
+3. Create the sale.
+4. Reduce inventory quantity.
+5. Increase quantity sold.
+6. Recalculate remaining quantity.
+7. Record payment if applicable.
+8. Update sale status.
+
+This should happen atomically on the backend/database.
+
+Avoid situations where a sale is recorded but inventory is not reduced.
+
+---
+
+# 33. MOBILE-FIRST RESPONSIVENESS
+
+This is extremely important.
+
+The application must be designed mobile-first.
+
+Do not simply build desktop and shrink it.
+
+On mobile:
+
+* Sidebar should become a drawer
+* Tables should become responsive cards or horizontally scrollable where appropriate
+* Forms should become one-column
+* Dashboard cards should stack
+* Charts must resize correctly
+* Buttons must be touch-friendly
+* Search should be easy to use
+* Modals should fit mobile screens
+* Navigation must be easy to access
+
+Test layouts around:
+
+* 320px
+* 375px
+* 390px
+* 414px
+* 768px
+* 1024px
+* 1440px+
+
+---
+
+# 34. NAVIGATION
+
+Admin sidebar:
+
+Dashboard
+
+Inventory
+
+Sales
+
+Customers
+
+Categories
+
+Reports / Analytics
+
+Settings
+
+Staff sidebar:
+
+Dashboard
+
+Sales
+
+My Sales
+
+Customers if permitted
+
+Keep navigation clean.
+
+Show the user's name and role in the sidebar/profile menu.
+
+---
+
+# 35. SEARCH UX
+
+Search should feel instant and modern.
+
+For product selling:
+
+Search results should display:
+
+* Image
+* Product name
+* Category
+* Selling price
+* Available quantity
+* Status
+
+Only available inventory should appear.
+
+Use debounced search if connected to an API.
+
+---
+
+# 36. FORMS
+
+All forms must have proper validation.
+
+Examples:
+
+Phone:
+
+* Required
+* Valid phone format
+
+Quantity:
+
+* Required
+* Positive integer
+* Cannot exceed available stock
+
+Price:
+
+* Required
+* Positive number
+
+Customer name:
+
+* Required
+
+Payment:
+
+* Cannot exceed outstanding balance
+
+Do not allow negative values.
+
+---
+
+# 37. ERROR HANDLING
+
+Handle:
+
+* Network errors
+* Server errors
+* Invalid forms
+* Duplicate phone numbers
+* Selling unavailable products
+* Selling more than available quantity
+* Payment greater than balance
+* Missing category
+* Missing product
+
+Display useful human-readable error messages.
+
+Do not expose raw backend errors to users.
+
+---
+
+# 38. LOADING STATES
+
+Every async operation should have a loading state.
+
+Examples:
+
+* Login
+* Fetch inventory
+* Fetch sales
+* Add product
+* Update product
+* Record sale
+* Add payment
+* Fetch customer
+* Dashboard analytics
+
+Use skeleton loaders where appropriate.
+
+---
+
+# 39. EMPTY STATES
+
+Create polished empty states.
+
+Examples:
+
+"No products available yet."
+
+"No sales recorded this month."
+
+"No installment customers found."
+
+"No customers match your search."
+
+Include helpful actions where appropriate.
+
+---
+
+# 40. CONFIRMATION DIALOGS
+
+For destructive actions such as deleting a category/product where allowed:
+
+Show a confirmation dialog.
+
+Example:
+
+"Are you sure you want to delete this category?"
+
+Do not immediately delete important records.
+
+---
+
+# 41. AUDITABILITY
+
+Where practical, record:
+
+* Who added inventory
+* Who recorded sale
+* Who recorded payment
+* Date/time of action
+
+This is important because multiple staff members may use the system.
+
+---
+
+# 42. BUSINESS LOGIC RULES
+
+These rules are critical.
+
+### Inventory
+
+Purchased quantity = total quantity originally acquired.
+
+Sold quantity = total quantity sold.
+
+Remaining quantity = purchased quantity - sold quantity.
+
+### Sale
+
+Total sale = quantity × selling price per unit.
+
+### Payment
+
+Amount paid = sum of all payments associated with the sale.
+
+Balance = total sale - amount paid.
+
+### Status
+
+If balance = 0:
+
+PAID
+
+If amount paid > 0 AND balance > 0:
+
+PARTIALLY PAID
+
+If amount paid = 0:
+
+UNPAID
+
+### Inventory status
+
+If remaining quantity = 0:
+
+SOLD OUT
+
+If sold quantity > 0 AND remaining quantity > 0:
+
+PARTIALLY SOLD
+
+If sold quantity = 0:
+
+AVAILABLE
+
+---
+
+# 43. MONEY FORMATTING
+
+Because this is a Nigerian business, use:
+
+₦
+
+Examples:
+
+₦25,000
+
+₦150,000
+
+₦1,250,000
+
+Use consistent Nigerian currency formatting throughout the application.
+
+Do not show raw floating-point numbers.
+
+---
+
+# 44. DATE FORMATTING
+
+Display dates in a human-friendly format.
+
+Example:
+
+6 September 2026
+
+For payment history:
+
+6 Sep 2026 — ₦30,000
+
+Store timestamps properly in the backend.
+
+---
+
+# 45. PERFORMANCE
+
+The application should remain fast even with thousands of:
+
+* Products
+* Sales
+* Customers
+* Payments
+
+Use:
+
+* Pagination
+* Server-side filtering where appropriate
+* Debounced search
+* Efficient queries
+* Proper database indexes
+
+Especially index:
+
+* Customer phone
+* Product name
+* Category
+* Sale date
+* Payment date
+
+---
+
+# 46. DASHBOARD UX
+
+The admin dashboard should immediately answer:
+
+"How is the business doing?"
+
+At a glance the admin should know:
+
+How much did we spend?
+
+How much did we sell?
+
+How much cash have we collected?
+
+How much are customers still owing?
+
+How much profit have we made?
+
+How many items remain?
+
+What is our sales trend?
+
+The dashboard should not feel overloaded.
+
+Prioritize the most important information.
+
+---
+
+# 47. RESPONSIVE TABLE STRATEGY
+
+Do not create tables that become unusable on mobile.
+
+For mobile, either:
+
+* Convert rows into cards
+
+OR
+
+* Use controlled horizontal scrolling
+
+For customer and sales information, cards may be better on very small screens.
+
+---
+
+# 48. SECURITY
+
+Implement:
+
+* Protected routes
+* Role-based access
+* Secure authentication
+* Backend authorization
+* Input validation
+* Proper password handling
+* No sensitive information in frontend source
+* Environment variables for API configuration
+
+Never trust the frontend for permissions.
+
+---
+
+# 49. COMPONENT DESIGN
+
+Create reusable components such as:
+
+```text
+DashboardCard
+DataTable
+MobileDataCard
+SearchInput
+FilterDropdown
+DateFilter
+StatusBadge
+ProductCard
+ProductSearch
+SaleForm
+PaymentForm
+PaymentHistory
+CustomerCard
+CustomerProfile
+ConfirmDialog
+Modal
+Toast
+EmptyState
+LoadingSkeleton
+Sidebar
+Navbar
+```
+
+Avoid duplicating UI logic between admin and staff.
+
+The admin and staff selling screens should reuse the same underlying sales components while applying different permissions.
+
+---
+
+# 50. REPORTING
+
+Admin reporting should support:
+
+Sales by:
+
+* Month
+* Year
+* Category
+
+Purchases by:
+
+* Month
+* Year
+* Category
+
+Profit by:
+
+* Month
+* Year
+* Category
+
+Outstanding installment customers:
+
+* Customer
+* Total purchase
+* Amount paid
+* Balance
+* Last payment
+
+Allow the admin to quickly identify customers who have not completed payment.
+
+---
+
+# 51. INSTALLMENT FILTER
+
+On the sales/admin reporting page create filters:
+
+All
+
+Paid
+
+Partially Paid
+
+Unpaid
+
+Clicking "Partially Paid" should show all customers/sales with outstanding balances.
+
+Display:
+
+Customer
+
+Phone
+
+Product
+
+Total
+
+Paid
+
+Balance
+
+Last payment date
+
+---
+
+# 52. UX FOR SELLING
+
+The selling process should be extremely fast.
+
+Ideal flow:
+
+1. Staff opens Sales.
+2. Searches product.
+3. Selects product.
+4. Enters quantity.
+5. Enters customer phone.
+6. Enters customer name.
+7. Selects full payment/installment.
+8. Enters amount paid.
+9. System calculates balance.
+10. Staff clicks "Complete Sale".
+11. Success confirmation appears.
+12. Inventory automatically updates.
+
+Aim for a sale to take less than one minute to record.
+
+---
+
+# 53. SUCCESS SCREEN
+
+After recording a sale:
+
+Show:
+
+"Sale recorded successfully."
+
+Then summarize:
+
+Product
+
+Quantity
+
+Customer
+
+Total
+
+Amount paid
+
+Balance
+
+Payment status
+
+Provide buttons:
+
+"Record Another Sale"
+
+"View Sale"
+
+---
+
+# 54. ADMIN INVENTORY ENTRY FLOW
+
+Ideal flow:
+
+Admin → Inventory → Add Item
+
+Enter:
+
+Product
+
+Image
+
+Category
+
+Quantity
+
+Purchase price
+
+Selling price
+
+Seller name
+
+Seller phone
+
+Seller address
+
+Purchase date
+
+Save.
+
+Then show the new inventory item.
+
+---
+
+# 55. DASHBOARD VISUALIZATION
+
+Use professional charts.
+
+At minimum:
+
+### Sales Growth
+
+Line chart.
+
+### Sales by Category
+
+Optional donut/bar chart.
+
+### Inventory Status
+
+Available / Partially Sold / Sold Out.
+
+Keep charts simple and readable.
+
+---
+
+# 56. PROJECT QUALITY
+
+Do not build a fake frontend using hardcoded data only.
+
+Build the application architecture as a real system.
+
+
+If backend infrastructure is not available, create a clean backend/database and connect it properly using API calls.
+
+Separate:
+
+UI
+
+Business logic
+
+API services
+
+Data models/types
+
+Utilities
+
+im using sql from this connection string
+
+import { Pool } from "pg";
+import { env } from "../config/env.js";
+
+// Single shared Postgres connection pool with retry configuration
+export const pool = new Pool({
+  host: env.db.host,
+  port: env.db.port,
+  user: env.db.user,
+  password: env.db.password,
+  database: env.db.database,
+  
+  // Connection pool settings
+  max: 20, // Maximum number of connections in the pool
+  min: 5, // Keep at least 5 connections alive to avoid cold starts
+  idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+  connectionTimeoutMillis: 5000, // Wait up to 5 seconds for a connection
+  
+  // SSL is required for Supabase and improves connection stability/speed when handled correctly by the driver
+  ssl: {
+    rejectUnauthorized: false
+  },
+
+  // Retry settings for DNS and connection issues
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+});
+
+export async function pingDatabase(): Promise<void> {
+  const start = Date.now();
+  await pool.query("SELECT 1");
+  const duration = Date.now() - start;
+  if (duration > 500) {
+    console.warn(`[DB] Ping took ${duration}ms - Possible slow connection to Supabase`);
+  }
+}
+
+
+
+
+
+
+---
+
+# 57. SEED DATA
+
+For development/demo purposes, create realistic sample data.
+
+Include:
+
+* Several categories
+* Several products
+* Products with quantity 1
+* Products with multiple quantities
+* Sold products
+* Partially sold products
+* Available products
+* Full-payment sales
+* Installment sales
+* Multiple payments for one sale
+* Buying customers
+* Selling customers
+* Customers who are both
+
+This is important for testing the dashboard and filters.
+
+---
+
+# 58. IMPORTANT EDGE CASES TO TEST
+
+Test:
+
+1. Selling the last available unit.
+2. Selling 2 out of 10 units.
+3. Trying to sell 11 out of 10 units.
+4. Customer paying full amount.
+5. Customer paying partial amount.
+6. Customer making multiple installment payments.
+7. Customer paying the exact remaining balance.
+8. Customer attempting to pay more than the balance.
+9. Existing customer buying another product.
+10. Existing customer selling another product.
+11. Customer acting as both buyer and seller.
+12. Product becoming SOLD OUT.
+13. Product becoming PARTIALLY SOLD.
+14. Filtering sales by month.
+15. Filtering sales by year.
+16. Filtering by category.
+17. Filtering installment customers.
+18. Searching sold-out products from the staff selling interface.
+19. Admin selling an item.
+20. Staff attempting to access admin-only inventory pages.
+21. Multiple staff recording sales.
+22. Refreshing the application while logged in.
+23. Mobile screen widths.
+24. Empty database.
+25. Large amounts of data.
+
+---
+
+# 59. IMPORTANT UI DETAILS
+
+Use consistent status badges.
+
+Example:
+
+AVAILABLE → neutral/positive
+
+PARTIALLY SOLD → warning
+
+SOLD OUT → green
+
+PAID → positive
+
+PARTIALLY PAID → warning
+
+UNPAID → negative
+
+Use subtle backgrounds rather than overly saturated colors.
+
+Use icons where they improve comprehension, but do not fill every element with icons.
+
+---
+
+# 60. FINAL REQUIREMENT
+
+Build this as if you are building a real internal SaaS product for a growing Nigerian declutter/resale business.
+
+Do not stop at creating the dashboard UI.
+
+The important part is the **business logic and relationships between inventory, sales, customers, payments, categories, and analytics.**
+
+The system must maintain data consistency.
+
+For example:
+
+If 5 units exist and 2 are sold:
+
+Inventory must show:
+
+Purchased: 5
+
+Sold: 2
+
+Remaining: 3
+
+If the customer paid ₦20,000 of a ₦50,000 sale:
+
+Sale must show:
+
+Total: ₦50,000
+
+Paid: ₦20,000
+
+Balance: ₦30,000
+
+If the customer later pays ₦15,000:
+
+Payment history should contain both payments.
+
+Total paid:
+
+₦35,000
+
+Balance:
+
+₦15,000
+
+The original payment record must remain unchanged.
+
+---
+
+# 61. DEVELOPMENT APPROACH
+
+Build in logical phases:
+
+PHASE 1:
+Project setup, layout, authentication and routing.
+
+PHASE 2:
+Database models/API architecture.
+
+PHASE 3:
+Admin inventory management.
+
+PHASE 4:
+Categories.
+
+PHASE 5:
+Sales system.
+
+PHASE 6:
+Payment/installment system.
+
+PHASE 7:
+Customers and transaction history.
+
+PHASE 8:
+Admin dashboard and analytics.
+
+PHASE 9:
+Staff dashboard.
+
+PHASE 10:
+Responsive/mobile optimization.
+
+PHASE 11:
+Validation, edge cases, permissions and security.
+
+PHASE 12:
+Final UI polish.
+
+After each phase, make sure the application still works before moving to the next phase.
+
+---
+
+# 62. BEFORE YOU START
+
+First inspect the existing project.
+
+Determine:
+
+* Existing React structure
+* Existing dependencies
+* Existing backend
+* Existing database
+* Existing authentication
+* Existing API endpoints
+* Existing Tailwind configuration
+
+Do NOT unnecessarily rewrite or destroy existing working code.
+
+If something already exists, extend it cleanly.
+
+If there is no backend/database yet, explain the architecture you are going to use and then implement it.
+
+---
+
+# 63. FINAL ACCEPTANCE CRITERIA
+
+The application is considered complete only when:
+
+* Admin can add inventory.
+* Admin can add categories.
+* Admin can view inventory.
+* Admin can filter inventory.
+* Sold inventory is visibly marked.
+* Multi-unit inventory works correctly.
+* Staff can search only available products.
+* Staff can sell partial quantities.
+* Inventory automatically updates after sales.
+* Customers are grouped by unique phone number.
+* Full payments work.
+* Installment payments work.
+* Multiple payments per sale work.
+* Payment dates are automatically recorded.
+* Outstanding balances are calculated correctly.
+* Admin can view all sales.
+* Admin can sell products.
+* Admin can update sales/payment information.
+* Customer transaction history works.
+* Customer filters work.
+* Admin dashboard statistics work.
+* Month/year filters work.
+* Category filters work.
+* Profit calculation works.
+* Sales growth chart works.
+* Mobile responsiveness is excellent.
+* Staff cannot access admin-only functionality.
+* Data validation works.
+* Error handling works.
+* Loading states work.
+* Empty states work.
+* The UI looks like a polished modern SaaS product.
+
+Do not mark the project as complete simply because the pages render.
+
+Test the actual business workflows end-to-end.
