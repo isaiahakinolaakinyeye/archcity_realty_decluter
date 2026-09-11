@@ -15,26 +15,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('declutter_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('declutter_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const checkSession = async () => {
       const token = localStorage.getItem('declutter_token');
+      const savedUser = localStorage.getItem('declutter_user');
+
       if (!token) {
         setIsLoading(false);
         return;
       }
       try {
         const data = await api.auth.me();
-        setUser(data.user);
-        localStorage.setItem('declutter_user', JSON.stringify(data.user));
-      } catch {
-        localStorage.removeItem('declutter_token');
-        localStorage.removeItem('declutter_user');
-        setUser(null);
+        if (data?.user) {
+          setUser(data.user);
+          localStorage.setItem('declutter_user', JSON.stringify(data.user));
+        }
+      } catch (err) {
+        console.warn('Could not re-verify session with server, retaining local user state:', err);
+        // If we have a saved user, retain their session so refreshes never log out
+        if (!savedUser) {
+          localStorage.removeItem('declutter_token');
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }

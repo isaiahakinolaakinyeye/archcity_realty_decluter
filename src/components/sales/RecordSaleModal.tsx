@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Product, Customer, Sale } from '../../types';
-import { formatNaira } from '../../utils/formatters';
+import { formatNaira, formatNumberWithCommas, parseRawPrice } from '../../utils/formatters';
 import { Modal } from '../common/Modal';
 import { StatusBadge } from '../common/StatusBadge';
 import { useToast } from '../common/Toast';
@@ -99,18 +99,18 @@ export const RecordSaleModal: React.FC<RecordSaleModalProps> = ({
   const handleProductSelect = (prod: Product) => {
     setSelectedProduct(prod);
     setQuantity(1);
-    const priceStr = (prod.sellingPricePerUnit ?? 0).toString();
-    setUnitPriceInput(priceStr);
-    setAmountPaidInput(priceStr);
+    const priceVal = prod.sellingPricePerUnit ?? 0;
+    setUnitPriceInput(formatNumberWithCommas(priceVal));
+    setAmountPaidInput(formatNumberWithCommas(priceVal));
   };
 
   // Unit selling price (negotiable / bargaining)
-  const unitSellingPrice = Math.max(0, parseFloat(unitPriceInput) || 0);
+  const unitSellingPrice = parseRawPrice(unitPriceInput);
   const totalSaleAmount = selectedProduct ? unitSellingPrice * quantity : 0;
   const initialPaid =
     paymentType === 'FULL'
       ? totalSaleAmount
-      : Math.min(totalSaleAmount, Math.max(0, parseFloat(amountPaidInput) || 0));
+      : Math.min(totalSaleAmount, parseRawPrice(amountPaidInput));
   const remainingBalance = Math.max(0, totalSaleAmount - initialPaid);
 
   const handleSubmitSale = async (e: React.FormEvent) => {
@@ -379,7 +379,7 @@ export const RecordSaleModal: React.FC<RecordSaleModalProps> = ({
                       );
                       setQuantity(newQty);
                       if (paymentType === 'FULL') {
-                        setAmountPaidInput((unitSellingPrice * newQty).toString());
+                        setAmountPaidInput(formatNumberWithCommas(unitSellingPrice * newQty));
                       }
                     }}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -400,17 +400,16 @@ export const RecordSaleModal: React.FC<RecordSaleModalProps> = ({
                     </span>
                   </div>
                   <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    placeholder="e.g. 25000"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 25,000"
                     value={unitPriceInput}
                     onChange={(e) => {
-                      const newPrice = e.target.value;
-                      setUnitPriceInput(newPrice);
-                      const parsed = Math.max(0, parseFloat(newPrice) || 0);
+                      const formatted = formatNumberWithCommas(e.target.value);
+                      setUnitPriceInput(formatted);
+                      const parsed = parseRawPrice(formatted);
                       if (paymentType === 'FULL') {
-                        setAmountPaidInput((parsed * quantity).toString());
+                        setAmountPaidInput(formatNumberWithCommas(parsed * quantity));
                       }
                     }}
                     className="w-full px-3 py-2 bg-blue-50/40 border border-blue-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
@@ -497,7 +496,7 @@ export const RecordSaleModal: React.FC<RecordSaleModalProps> = ({
                       type="button"
                       onClick={() => {
                         setPaymentType('FULL');
-                        setAmountPaidInput(totalSaleAmount.toString());
+                        setAmountPaidInput(formatNumberWithCommas(totalSaleAmount));
                       }}
                       className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
                         paymentType === 'FULL'
@@ -538,13 +537,11 @@ export const RecordSaleModal: React.FC<RecordSaleModalProps> = ({
                         Amount Paid Now (₦) *
                       </label>
                       <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        max={totalSaleAmount}
-                        placeholder="e.g. 20000"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="e.g. 20,000"
                         value={amountPaidInput}
-                        onChange={(e) => setAmountPaidInput(e.target.value)}
+                        onChange={(e) => setAmountPaidInput(formatNumberWithCommas(e.target.value))}
                         className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-sm font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>

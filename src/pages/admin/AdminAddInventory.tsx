@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Category } from '../../types';
-import { formatNaira } from '../../utils/formatters';
+import { Category, Customer } from '../../types';
+import { formatNaira, formatNumberWithCommas, parseRawPrice } from '../../utils/formatters';
 import { useToast } from '../../components/common/Toast';
 import {
   ArrowLeft,
@@ -15,6 +15,10 @@ import {
   X,
   Loader2,
   ImageIcon,
+  Search,
+  Phone,
+  MapPin,
+  Check,
 } from 'lucide-react';
 
 export const AdminAddInventory: React.FC = () => {
@@ -27,6 +31,14 @@ export const AdminAddInventory: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Customer search state for sellers
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState<Customer[]>([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -50,14 +62,91 @@ export const AdminAddInventory: React.FC = () => {
     });
   }, []);
 
+  // Close customer search dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === 'purchasePricePerUnit' || name === 'sellingPricePerUnit') {
+      const formatted = formatNumberWithCommas(value);
+      setFormData((prev) => ({ ...prev, [name]: formatted }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Search existing customers
+  const handleCustomerSearch = async (query: string) => {
+    setCustomerSearchQuery(query);
+    if (!query.trim()) {
+      setCustomerSearchResults([]);
+      setShowCustomerDropdown(false);
+      return;
+    }
+    setIsSearchingCustomers(true);
+    setShowCustomerDropdown(true);
+    try {
+      const results = await api.customers.getAll({ search: query.trim() });
+      setCustomerSearchResults(results.slice(0, 8));
+    } catch {
+      setCustomerSearchResults([]);
+    } finally {
+      setIsSearchingCustomers(false);
+    }
+  };
+
+  const handleSelectCustomer = (cust: Customer) => {
+    setSelectedCustomer(cust);
+    setFormData((prev) => ({
+      ...prev,
+      sellerName: cust.name,
+      sellerPhone: cust.phone,
+      sellerAddress: cust.address || '',
+    }));
+    setCustomerSearchQuery('');
+    setShowCustomerDropdown(false);
+    toast.success(`Selected customer: ${cust.name}`);
+  };
+
+  const handleClearSelectedCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerSearchQuery('');
+  };
+
+  // Direct phone lookup when admin types in phone number field
+  const handleSellerPhoneChange = async (phone: string) => {
+    setFormData((prev) => ({ ...prev, sellerPhone: phone }));
+    const clean = phone.trim();
+    if (clean.length >= 7) {
+      try {
+        const matches = await api.customers.getAll({ search: clean });
+        const exact = matches.find(
+          (c) => c.phone.replace(/[\s-]/g, '') === clean.replace(/[\s-]/g, '')
+        );
+        if (exact) {
+          setSelectedCustomer(exact);
+          setFormData((prev) => ({
+            ...prev,
+            sellerName: exact.name,
+            sellerAddress: exact.address || prev.sellerAddress,
+          }));
+          toast.success(`Found existing customer: ${exact.name}`);
+        }
+      } catch {}
+    }
+  };
+
   const qty = parseInt(formData.quantity || '0', 10);
-  const cost = parseFloat(formData.purchasePricePerUnit || '0');
-  const price = parseFloat(formData.sellingPricePerUnit || '0');
+  const cost = parseRawPrice(formData.purchasePricePerUnit);
+  const price = parseRawPrice(formData.sellingPricePerUnit);
   const unitProfit = price && cost ? price - cost : null;
   const totalPotentialProfit = unitProfit !== null ? unitProfit * qty : null;
 
@@ -327,14 +416,13 @@ export const AdminAddInventory: React.FC = () => {
                   Purchase Cost Per Unit (₦) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   name="purchasePricePerUnit"
-                  step="any"
-                  min="0"
                   required
                   value={formData.purchasePricePerUnit}
                   onChange={handleChange}
-                  placeholder="e.g. 25000"
+                  placeholder="e.g. 25,000"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
                 />
               </div>
@@ -345,13 +433,12 @@ export const AdminAddInventory: React.FC = () => {
                   <span className="text-slate-400 font-normal">— Optional</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   name="sellingPricePerUnit"
-                  step="any"
-                  min="0"
                   value={formData.sellingPricePerUnit}
                   onChange={handleChange}
-                  placeholder="Set later if unknown"
+                  placeholder="e.g. 35,000 (set later if unknown)"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Can be set or updated later.</p>
@@ -361,12 +448,107 @@ export const AdminAddInventory: React.FC = () => {
 
           {/* Seller Information */}
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <User className="w-4 h-4 text-blue-600" />
-              <span>Seller (Acquisition Source)</span>
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <User className="w-4 h-4 text-blue-600" />
+                <span>Seller (Acquisition Source)</span>
+              </h3>
+              <span className="text-[11px] text-slate-400 font-medium">
+                Search existing customer or enter new seller details
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Customer Search Bar */}
+            <div className="relative" ref={customerDropdownRef}>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                <span>Search Existing Customers</span>
+                {selectedCustomer && (
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedCustomer}
+                    className="text-[11px] font-bold text-rose-600 hover:text-rose-700 transition"
+                  >
+                    Clear Selected
+                  </button>
+                )}
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={customerSearchQuery}
+                  onChange={(e) => handleCustomerSearch(e.target.value)}
+                  onFocus={() => {
+                    if (customerSearchQuery.trim()) setShowCustomerDropdown(true);
+                  }}
+                  placeholder="Search customer by name or phone (e.g. Ibrahim or 0803...)"
+                  className="w-full pl-10 pr-10 py-2.5 bg-blue-50/40 border border-blue-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                />
+                {isSearchingCustomers && (
+                  <Loader2 className="w-4 h-4 text-blue-500 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
+                )}
+              </div>
+
+              {/* Autocomplete Dropdown */}
+              {showCustomerDropdown && (
+                <div className="absolute z-20 left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+                  {customerSearchResults.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                      {customerSearchResults.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleSelectCustomer(c)}
+                          className="w-full px-4 py-2.5 text-left hover:bg-blue-50/60 transition flex items-center justify-between gap-3 group"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-900 group-hover:text-blue-700 flex items-center gap-1.5">
+                              <span>{c.name}</span>
+                              <span className="text-[10px] font-semibold text-slate-400">({c.phone})</span>
+                            </p>
+                            {c.address && (
+                              <p className="text-[10px] text-slate-400 truncate mt-0.5 flex items-center gap-1">
+                                <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                <span>{c.address}</span>
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 shrink-0">
+                            Select
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      No matching customers found for "{customerSearchQuery}". You can enter their details below as a new seller.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Selected customer badge */}
+              {selectedCustomer && (
+                <div className="mt-2.5 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-bold text-emerald-900 truncate">
+                      Customer Linked: {selectedCustomer.name} ({selectedCustomer.phone})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedCustomer}
+                    className="p-1 text-emerald-700 hover:text-emerald-950 rounded-lg transition"
+                    title="Remove link"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Seller Full Name *</label>
                 <input
@@ -387,10 +569,13 @@ export const AdminAddInventory: React.FC = () => {
                   name="sellerPhone"
                   required
                   value={formData.sellerPhone}
-                  onChange={handleChange}
+                  onChange={(e) => handleSellerPhoneChange(e.target.value)}
                   placeholder="e.g. 08031234567"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
                 />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Auto-detects matching customer if registered.
+                </span>
               </div>
             </div>
 

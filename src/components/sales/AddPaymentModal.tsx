@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../../services/api';
 import { Sale } from '../../types';
-import { formatNaira } from '../../utils/formatters';
+import { formatNaira, formatNumberWithCommas, parseRawPrice } from '../../utils/formatters';
 import { Modal } from '../common/Modal';
 import { useToast } from '../common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -28,7 +28,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
   if (!sale) return null;
 
-  const paymentVal = parseFloat(amount || '0');
+  const paymentVal = parseRawPrice(amount);
   const newBalance = Math.max(0, sale.balance - paymentVal);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,15 +99,13 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           <div className="relative">
             <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
-              type="number"
-              step="any"
-              min="1"
-              max={sale.balance}
+              type="text"
+              inputMode="decimal"
               required
               autoFocus
-              placeholder="e.g. 20000"
+              placeholder="e.g. 20,000"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => setAmount(formatNumberWithCommas(e.target.value))}
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
             />
           </div>

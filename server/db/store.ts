@@ -110,6 +110,69 @@ export async function initStore() {
           );
         }
         console.log('[DB] Seeding complete.');
+      } else {
+        // Hydrate in-memory arrays from PostgreSQL on server startup
+        try {
+          const { rows: pRows } = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
+          if (pRows.length > 0) {
+            products = pRows.map((r) => ({
+              id: r.id,
+              name: r.name,
+              image: r.image,
+              categoryId: r.category_id,
+              quantityPurchased: r.quantity_purchased,
+              quantitySold: r.quantity_sold,
+              quantityRemaining: r.quantity_remaining,
+              purchasePricePerUnit: parseFloat(r.purchase_price_per_unit),
+              sellingPricePerUnit: r.selling_price_per_unit !== null ? parseFloat(r.selling_price_per_unit) : 0,
+              sellerCustomerId: r.seller_customer_id,
+              purchaseDate: r.purchase_date,
+              status: r.status,
+              createdAt: r.created_at,
+            }));
+          }
+          const { rows: custRows } = await pool.query('SELECT * FROM customers ORDER BY name ASC');
+          if (custRows.length > 0) {
+            customers = custRows.map((r) => ({
+              id: r.id,
+              name: r.name,
+              phone: r.phone,
+              address: r.address || '',
+              createdAt: r.created_at,
+            }));
+          }
+          const { rows: sRows } = await pool.query('SELECT * FROM sales ORDER BY sale_date DESC');
+          if (sRows.length > 0) {
+            sales = sRows.map((r) => ({
+              id: r.id,
+              productId: r.product_id,
+              buyerCustomerId: r.buyer_customer_id,
+              quantity: r.quantity,
+              sellingPricePerUnit: parseFloat(r.selling_price_per_unit),
+              totalAmount: parseFloat(r.total_amount),
+              amountPaid: parseFloat(r.amount_paid),
+              balance: parseFloat(r.balance),
+              paymentStatus: r.payment_status,
+              soldBy: r.sold_by,
+              saleDate: r.sale_date,
+              createdAt: r.created_at,
+            }));
+          }
+          const { rows: payRows } = await pool.query('SELECT * FROM payments ORDER BY payment_date DESC');
+          if (payRows.length > 0) {
+            payments = payRows.map((r) => ({
+              id: r.id,
+              saleId: r.sale_id,
+              amount: parseFloat(r.amount),
+              paymentDate: r.payment_date,
+              recordedBy: r.recorded_by,
+              createdAt: r.created_at,
+            }));
+          }
+          console.log(`[DB] Hydrated store from PostgreSQL: ${products.length} products, ${customers.length} customers, ${sales.length} sales, ${payments.length} payments.`);
+        } catch (err: any) {
+          console.error('[DB] Error hydrating from Postgres:', err.message);
+        }
       }
     } catch (err: any) {
       console.error('[DB] Error during PostgreSQL initialization:', err.message);
@@ -119,6 +182,7 @@ export async function initStore() {
     console.log('[Store] Running with in-memory transaction store. All features active!');
   }
 }
+
 
 export const db = {
   getIsPgConnected: () => isPgConnected,
@@ -249,26 +313,87 @@ export const db = {
   // CUSTOMERS
   customers: {
     getAll: async (): Promise<Customer[]> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM customers ORDER BY name ASC');
+          return res.rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            phone: r.phone,
+            address: r.address || '',
+            createdAt: r.created_at,
+          }));
+        } catch (err: any) {
+          console.error('[DB] Error reading customers from Postgres:', err.message);
+        }
+      }
       return [...customers];
     },
     findById: async (id: string): Promise<Customer | null> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM customers WHERE id = $1', [id]);
+          if (res.rows[0]) {
+            const r = res.rows[0];
+            return {
+              id: r.id,
+              name: r.name,
+              phone: r.phone,
+              address: r.address || '',
+              createdAt: r.created_at,
+            };
+          }
+          return null;
+        } catch {}
+      }
       return customers.find((c) => c.id === id) || null;
     },
     findByPhone: async (phone: string): Promise<Customer | null> => {
       const clean = phone.replace(/[\s-]/g, '');
+      if (isPgConnected) {
+        try {
+          const res = await pool.query(
+            "SELECT * FROM customers WHERE REPLACE(REPLACE(phone, ' ', ''), '-', '') = $1",
+            [clean]
+          );
+          if (res.rows[0]) {
+            const r = res.rows[0];
+            return {
+              id: r.id,
+              name: r.name,
+              phone: r.phone,
+              address: r.address || '',
+              createdAt: r.created_at,
+            };
+          }
+          return null;
+        } catch {}
+      }
       return customers.find((c) => c.phone.replace(/[\s-]/g, '') === clean) || null;
     },
     createOrFind: async (data: { name: string; phone: string; address?: string }): Promise<Customer> => {
       const cleanPhone = data.phone.trim();
       const existing = await db.customers.findByPhone(cleanPhone);
       if (existing) {
-        // Update name or address if provided
+        let changed = false;
         if (data.name && data.name.trim() !== existing.name) {
           existing.name = data.name.trim();
+          changed = true;
         }
-        if (data.address && data.address.trim()) {
+        if (data.address && data.address.trim() && data.address.trim() !== existing.address) {
           existing.address = data.address.trim();
+          changed = true;
         }
+        if (changed && isPgConnected) {
+          try {
+            await pool.query(
+              'UPDATE customers SET name = $1, address = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+              [existing.name, existing.address, existing.id]
+            );
+          } catch {}
+        }
+        const memIdx = customers.findIndex((c) => c.id === existing.id);
+        if (memIdx !== -1) customers[memIdx] = existing;
         return existing;
       }
       const newCust: Customer = {
@@ -284,17 +409,32 @@ export const db = {
             'INSERT INTO customers (id, name, phone, address, created_at) VALUES ($1, $2, $3, $4, $5)',
             [newCust.id, newCust.name, newCust.phone, newCust.address, newCust.createdAt]
           );
-        } catch {}
+        } catch (err: any) {
+          console.error('[DB] Error inserting customer to Postgres:', err.message);
+        }
       }
       customers.push(newCust);
       return newCust;
     },
     update: async (id: string, data: Partial<Customer>): Promise<Customer> => {
-      const cust = customers.find((c) => c.id === id);
+      const cust = await db.customers.findById(id);
       if (!cust) throw new Error('Customer not found');
       if (data.name) cust.name = data.name.trim();
       if (data.phone) cust.phone = data.phone.trim();
       if (data.address !== undefined) cust.address = data.address.trim();
+
+      if (isPgConnected) {
+        try {
+          await pool.query(
+            'UPDATE customers SET name = $1, phone = $2, address = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
+            [cust.name, cust.phone, cust.address, id]
+          );
+        } catch (err: any) {
+          console.error('[DB] Error updating customer in Postgres:', err.message);
+        }
+      }
+      const memIdx = customers.findIndex((c) => c.id === id);
+      if (memIdx !== -1) customers[memIdx] = cust;
       return cust;
     }
   },
@@ -302,9 +442,55 @@ export const db = {
   // PRODUCTS / INVENTORY
   products: {
     getAll: async (): Promise<Product[]> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
+          return res.rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            image: r.image,
+            categoryId: r.category_id,
+            quantityPurchased: r.quantity_purchased,
+            quantitySold: r.quantity_sold,
+            quantityRemaining: r.quantity_remaining,
+            purchasePricePerUnit: parseFloat(r.purchase_price_per_unit),
+            sellingPricePerUnit: r.selling_price_per_unit !== null && r.selling_price_per_unit !== undefined ? parseFloat(r.selling_price_per_unit) : 0,
+            sellerCustomerId: r.seller_customer_id,
+            purchaseDate: r.purchase_date,
+            status: r.status,
+            createdAt: r.created_at,
+          }));
+        } catch (err: any) {
+          console.error('[DB] Error reading products from Postgres:', err.message);
+        }
+      }
       return [...products];
     },
     findById: async (id: string): Promise<Product | null> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+          if (res.rows[0]) {
+            const r = res.rows[0];
+            return {
+              id: r.id,
+              name: r.name,
+              image: r.image,
+              categoryId: r.category_id,
+              quantityPurchased: r.quantity_purchased,
+              quantitySold: r.quantity_sold,
+              quantityRemaining: r.quantity_remaining,
+              purchasePricePerUnit: parseFloat(r.purchase_price_per_unit),
+              sellingPricePerUnit: r.selling_price_per_unit !== null && r.selling_price_per_unit !== undefined ? parseFloat(r.selling_price_per_unit) : 0,
+              sellerCustomerId: r.seller_customer_id,
+              purchaseDate: r.purchase_date,
+              status: r.status,
+              createdAt: r.created_at,
+            };
+          }
+          return null;
+        } catch {}
+      }
       return products.find((p) => p.id === id) || null;
     },
     create: async (data: {
@@ -370,14 +556,17 @@ export const db = {
               newProd.createdAt,
             ]
           );
-        } catch {}
+          console.log(`[DB] Product saved to PostgreSQL successfully: ${newProd.id} (${newProd.name})`);
+        } catch (err: any) {
+          console.error('[DB] Error saving product to Postgres:', err.message);
+        }
       }
 
       products.unshift(newProd);
       return newProd;
     },
     update: async (id: string, data: Partial<Product>): Promise<Product> => {
-      const prod = products.find((p) => p.id === id);
+      const prod = await db.products.findById(id);
       if (!prod) throw new Error('Product not found');
       if (data.name) prod.name = data.name.trim();
       if (data.image) prod.image = data.image.trim();
@@ -396,12 +585,36 @@ export const db = {
       } else {
         prod.status = 'AVAILABLE';
       }
+
+      if (isPgConnected) {
+        try {
+          await pool.query(
+            `UPDATE products SET name = $1, image = $2, category_id = $3, purchase_price_per_unit = $4, selling_price_per_unit = $5, quantity_purchased = $6, quantity_remaining = $7, status = $8, updated_at = CURRENT_TIMESTAMP WHERE id = $9`,
+            [
+              prod.name,
+              prod.image,
+              prod.categoryId,
+              prod.purchasePricePerUnit,
+              prod.sellingPricePerUnit,
+              prod.quantityPurchased,
+              prod.quantityRemaining,
+              prod.status,
+              id,
+            ]
+          );
+        } catch (err: any) {
+          console.error('[DB] Error updating product in Postgres:', err.message);
+        }
+      }
+      const memIdx = products.findIndex((p) => p.id === id);
+      if (memIdx !== -1) products[memIdx] = prod;
       return prod;
     },
     delete: async (id: string): Promise<void> => {
-      const prod = products.find((p) => p.id === id);
+      const prod = await db.products.findById(id);
       if (!prod) throw new Error('Product not found');
-      const hasSales = sales.some((s) => s.productId === id);
+      const salesList = await db.sales.getAll();
+      const hasSales = salesList.some((s) => s.productId === id);
       if (hasSales) {
         throw new Error('Cannot delete product: sales have already been recorded for this product.');
       }
@@ -409,7 +622,9 @@ export const db = {
       if (isPgConnected) {
         try {
           await pool.query('DELETE FROM products WHERE id = $1', [id]);
-        } catch {}
+        } catch (err: any) {
+          console.error('[DB] Error deleting product from Postgres:', err.message);
+        }
       }
     }
   },
@@ -417,9 +632,53 @@ export const db = {
   // SALES & ATOMIC TRANSACTION LOGIC (Section 32, 42, 58)
   sales: {
     getAll: async (): Promise<Sale[]> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM sales ORDER BY sale_date DESC');
+          return res.rows.map((r) => ({
+            id: r.id,
+            productId: r.product_id,
+            buyerCustomerId: r.buyer_customer_id,
+            quantity: r.quantity,
+            sellingPricePerUnit: parseFloat(r.selling_price_per_unit),
+            totalAmount: parseFloat(r.total_amount),
+            amountPaid: parseFloat(r.amount_paid),
+            balance: parseFloat(r.balance),
+            paymentStatus: r.payment_status,
+            soldBy: r.sold_by,
+            saleDate: r.sale_date,
+            createdAt: r.created_at,
+          }));
+        } catch (err: any) {
+          console.error('[DB] Error reading sales from Postgres:', err.message);
+        }
+      }
       return [...sales];
     },
     findById: async (id: string): Promise<Sale | null> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM sales WHERE id = $1', [id]);
+          if (res.rows[0]) {
+            const r = res.rows[0];
+            return {
+              id: r.id,
+              productId: r.product_id,
+              buyerCustomerId: r.buyer_customer_id,
+              quantity: r.quantity,
+              sellingPricePerUnit: parseFloat(r.selling_price_per_unit),
+              totalAmount: parseFloat(r.total_amount),
+              amountPaid: parseFloat(r.amount_paid),
+              balance: parseFloat(r.balance),
+              paymentStatus: r.payment_status,
+              soldBy: r.sold_by,
+              saleDate: r.sale_date,
+              createdAt: r.created_at,
+            };
+          }
+          return null;
+        } catch {}
+      }
       return sales.find((s) => s.id === id) || null;
     },
     createSale: async (data: {
@@ -434,7 +693,7 @@ export const db = {
       soldBy: string;
     }): Promise<{ sale: Sale; payment: Payment | null; product: Product; customer: Customer }> => {
       // 1. Check product and available quantity
-      const prod = products.find((p) => p.id === data.productId);
+      const prod = await db.products.findById(data.productId);
       if (!prod) {
         throw new Error('Product not found');
       }
@@ -526,6 +785,8 @@ export const db = {
       }
 
       sales.unshift(newSale);
+      const memProdIdx = products.findIndex((p) => p.id === prod.id);
+      if (memProdIdx !== -1) products[memProdIdx] = prod;
 
       // Persist to Postgres if active
       if (isPgConnected) {
@@ -570,9 +831,39 @@ export const db = {
   // PAYMENTS (Section 15, 16)
   payments: {
     getAll: async (): Promise<Payment[]> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM payments ORDER BY payment_date DESC');
+          return res.rows.map((r) => ({
+            id: r.id,
+            saleId: r.sale_id,
+            amount: parseFloat(r.amount),
+            paymentDate: r.payment_date,
+            recordedBy: r.recorded_by,
+            createdAt: r.created_at,
+          }));
+        } catch (err: any) {
+          console.error('[DB] Error reading payments from Postgres:', err.message);
+        }
+      }
       return [...payments];
     },
     getBySaleId: async (saleId: string): Promise<Payment[]> => {
+      if (isPgConnected) {
+        try {
+          const res = await pool.query('SELECT * FROM payments WHERE sale_id = $1 ORDER BY payment_date ASC', [saleId]);
+          return res.rows.map((r) => ({
+            id: r.id,
+            saleId: r.sale_id,
+            amount: parseFloat(r.amount),
+            paymentDate: r.payment_date,
+            recordedBy: r.recorded_by,
+            createdAt: r.created_at,
+          }));
+        } catch (err: any) {
+          console.error('[DB] Error reading payments by saleId from Postgres:', err.message);
+        }
+      }
       return payments
         .filter((p) => p.saleId === saleId)
         .sort((a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime());
@@ -583,7 +874,7 @@ export const db = {
       recordedBy: string;
       paymentDate?: string;
     }): Promise<{ payment: Payment; sale: Sale }> => {
-      const sale = sales.find((s) => s.id === data.saleId);
+      const sale = await db.sales.findById(data.saleId);
       if (!sale) throw new Error('Sale not found');
 
       if (data.amount <= 0) {
@@ -608,8 +899,11 @@ export const db = {
       payments.push(newPayment);
 
       // Re-sum all payments for this sale to ensure absolute data truth
-      const allPaymentsForSale = payments.filter((p) => p.saleId === sale.id);
-      const totalPaid = allPaymentsForSale.reduce((sum, p) => sum + p.amount, 0);
+      const allPaymentsForSale = isPgConnected
+        ? await db.payments.getBySaleId(sale.id)
+        : payments.filter((p) => p.saleId === sale.id);
+      
+      const totalPaid = allPaymentsForSale.reduce((sum, p) => sum + p.amount, 0) + (isPgConnected ? data.amount : 0);
       sale.amountPaid = totalPaid;
       sale.balance = Math.max(0, sale.totalAmount - totalPaid);
 
@@ -631,8 +925,13 @@ export const db = {
             'UPDATE sales SET amount_paid = $1, balance = $2, payment_status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
             [sale.amountPaid, sale.balance, sale.paymentStatus, sale.id]
           );
-        } catch {}
+        } catch (err: any) {
+          console.error('[DB] Error saving payment to Postgres:', err.message);
+        }
       }
+
+      const memSaleIdx = sales.findIndex((s) => s.id === sale.id);
+      if (memSaleIdx !== -1) sales[memSaleIdx] = sale;
 
       return { payment: newPayment, sale };
     }
